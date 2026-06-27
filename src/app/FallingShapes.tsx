@@ -113,13 +113,16 @@ export default function FallingShapes() {
     Render.run(render);
 
     // Drip shapes in until the pile is built, then stop.
-    const maxShapes = Math.min(70, Math.floor(width / 16));
+    // Scale with area so larger screens get a deeper pile.
+    const maxShapes = Math.min(220, Math.floor((width * height) / 7000));
     let count = 0;
     const spawnTimer = window.setInterval(() => {
+      // Drop a couple at a time so the pile builds up faster.
       spawnShape();
-      count += 1;
+      spawnShape();
+      count += 2;
       if (count >= maxShapes) window.clearInterval(spawnTimer);
-    }, 220);
+    }, 130);
 
     // Keep bounds in sync with container size.
     const resize = () => {
