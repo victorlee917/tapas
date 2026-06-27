@@ -16,31 +16,21 @@ const apps: App[] = [
   },
 ];
 
+import FallingShapes from "./FallingShapes";
+
 export default function Home() {
   return (
     <main className="flex flex-col">
       {/* Hero */}
-      <section className="flex flex-1 flex-col items-center justify-center px-6 py-28 text-center">
-        <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">
-          Tapas
-        </h1>
-        <p className="mt-6 max-w-xl text-lg text-foreground/60">
-          A short one-line introduction to your service goes here. This is a
-          simple official page with company information and an app overview.
-        </p>
-        <div className="mt-10 flex gap-3">
-          <a
-            href="#apps"
-            className="rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-opacity hover:opacity-90"
-          >
-            Our Apps
-          </a>
-          <a
-            href="#contact"
-            className="rounded-full border border-foreground/15 px-6 py-3 text-sm font-medium transition-colors hover:bg-foreground/5"
-          >
-            Contact
-          </a>
+      <section className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden px-6 py-32 text-center">
+        <FallingShapes />
+        <div className="relative z-10 flex flex-col items-center">
+          <h1 className="max-w-3xl text-5xl font-semibold tracking-tight sm:text-7xl">
+            Tapas
+          </h1>
+          <p className="mt-6 max-w-xl text-lg text-foreground/60">
+            We make small, fun things — like tapas.
+          </p>
         </div>
       </section>
 
@@ -85,7 +75,7 @@ export default function Home() {
                   href={app.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="shrink-0 rounded-full border border-foreground/15 px-5 py-2 text-sm font-medium transition-colors hover:bg-foreground/5"
+                  className="shrink-0 cursor-pointer rounded-full border border-foreground/15 px-5 py-2 text-sm font-medium transition-colors hover:bg-foreground/5"
                 >
                   View
                 </a>

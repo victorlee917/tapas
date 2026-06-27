@@ -10,6 +10,12 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "Tapas",
   description: "Tapas official homepage",
+  // Google Search Console — HTML tag verification.
+  // Paste the content value from the "HTML tag" method
+  // (the part inside content="..."), then redeploy and click Verify.
+  verification: {
+    google: "ovwI8aIu1eUh4YUhfai7ohxDLv4bnBBUlF9AwStjqVE",
+  },
 };
 
 export default function RootLayout({
