@@ -108,6 +108,40 @@ export default function FallingShapes() {
       Composite.add(engine.world, body);
     }
 
+    // A small tile of random monochrome noise, reused as a repeating pattern.
+    function makeGrain() {
+      const g = document.createElement("canvas");
+      g.width = 140;
+      g.height = 140;
+      const gctx = g.getContext("2d");
+      if (!gctx) return g;
+      const img = gctx.createImageData(g.width, g.height);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = Math.floor(Math.random() * 255);
+        img.data[i] = v;
+        img.data[i + 1] = v;
+        img.data[i + 2] = v;
+        // Sparse, low-alpha speckles so it reads as grain, not static.
+        img.data[i + 3] = Math.random() < 0.55 ? Math.floor(Math.random() * 120) : 0;
+      }
+      gctx.putImageData(img, 0, 0);
+      return g;
+    }
+    const grain = makeGrain();
+
+    // After each frame, dust grain over the shape pixels only.
+    Matter.Events.on(render, "afterRender", () => {
+      const ctx = render.context;
+      const pattern = ctx.createPattern(grain, "repeat");
+      if (!pattern) return;
+      ctx.save();
+      ctx.globalCompositeOperation = "source-atop"; // only over drawn shapes
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = pattern;
+      ctx.fillRect(0, 0, render.options.width || 0, render.options.height || 0);
+      ctx.restore();
+    });
+
     const runner = Runner.create();
     Runner.run(runner, engine);
     Render.run(render);
