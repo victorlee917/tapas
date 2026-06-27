@@ -1,14 +1,7 @@
-type ShapeType = "bowl" | "circle" | "square" | "triangle";
+"use client";
 
-type Shape = {
-  type: ShapeType;
-  color: string;
-  size: number; // px
-  left: number; // %
-  fall: number; // s — vertical fall duration (smaller = faster/closer)
-  sway: number; // s — horizontal wobble duration
-  delay: number; // s
-};
+import { useEffect, useRef } from "react";
+import Matter from "matter-js";
 
 // Warm, tapas-inspired palette.
 const COLORS = [
@@ -24,89 +17,143 @@ const COLORS = [
   "#84A59D",
 ];
 
-// Deterministic config (no Math.random) so SSR and client markup match.
-// Bigger shapes fall a touch faster → reads as "closer" (parallax depth).
-const SHAPES: Shape[] = [
-  { type: "bowl", color: COLORS[0], size: 60, left: 6, fall: 4.0, sway: 2.1, delay: 0 },
-  { type: "circle", color: COLORS[1], size: 30, left: 15, fall: 6.2, sway: 2.8, delay: 1.2 },
-  { type: "triangle", color: COLORS[2], size: 44, left: 23, fall: 4.8, sway: 1.9, delay: 2.4 },
-  { type: "square", color: COLORS[3], size: 26, left: 31, fall: 6.6, sway: 3.0, delay: 0.6 },
-  { type: "bowl", color: COLORS[4], size: 48, left: 40, fall: 4.4, sway: 2.3, delay: 3.0 },
-  { type: "circle", color: COLORS[5], size: 64, left: 49, fall: 3.6, sway: 2.0, delay: 1.6 },
-  { type: "square", color: COLORS[6], size: 22, left: 57, fall: 6.9, sway: 3.1, delay: 3.6 },
-  { type: "bowl", color: COLORS[7], size: 56, left: 65, fall: 4.1, sway: 2.2, delay: 0.9 },
-  { type: "triangle", color: COLORS[8], size: 30, left: 73, fall: 6.0, sway: 2.6, delay: 2.8 },
-  { type: "circle", color: COLORS[9], size: 40, left: 81, fall: 5.2, sway: 2.4, delay: 1.0 },
-  { type: "bowl", color: COLORS[2], size: 50, left: 89, fall: 4.6, sway: 2.1, delay: 2.0 },
-  { type: "square", color: COLORS[0], size: 24, left: 11, fall: 6.8, sway: 3.2, delay: 4.0 },
-  { type: "circle", color: COLORS[4], size: 18, left: 45, fall: 7.2, sway: 3.4, delay: 4.6 },
-  { type: "triangle", color: COLORS[5], size: 38, left: 69, fall: 5.0, sway: 2.5, delay: 0.4 },
-  { type: "bowl", color: COLORS[1], size: 34, left: 35, fall: 5.6, sway: 2.7, delay: 5.2 },
-  { type: "circle", color: COLORS[6], size: 54, left: 78, fall: 3.9, sway: 2.0, delay: 3.3 },
-];
-
-function shapeStyle(s: Shape): React.CSSProperties {
-  // Depth cue: bigger shapes cast a stronger shadow and sit more opaque.
-  const depth = (s.size - 18) / (64 - 18); // 0..1
-  const shadow = `drop-shadow(0 ${4 + depth * 8}px ${6 + depth * 8}px rgba(0,0,0,${(
-    0.12 +
-    depth * 0.18
-  ).toFixed(2)}))`;
-
-  const base: React.CSSProperties = {
-    width: s.size,
-    height: s.size,
-    backgroundColor: s.color,
-    filter: shadow,
-  };
-
-  switch (s.type) {
-    case "circle":
-      return { ...base, borderRadius: "9999px" };
-    case "square":
-      return { ...base, borderRadius: "8px" };
-    case "bowl":
-      // Flat top, rounded bottom — reads as a little bowl.
-      return { ...base, height: s.size / 2, borderRadius: "0 0 9999px 9999px" };
-    case "triangle":
-      return {
-        width: 0,
-        height: 0,
-        backgroundColor: "transparent",
-        filter: shadow,
-        borderLeft: `${s.size / 2}px solid transparent`,
-        borderRight: `${s.size / 2}px solid transparent`,
-        borderBottom: `${s.size}px solid ${s.color}`,
-      };
-  }
-}
-
 export default function FallingShapes() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Respect reduced-motion preferences.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const {
+      Engine,
+      Render,
+      Runner,
+      Bodies,
+      Composite,
+      Common,
+    } = Matter;
+
+    let width = container.clientWidth;
+    let height = container.clientHeight;
+
+    const engine = Engine.create();
+    engine.gravity.y = 1;
+
+    const render = Render.create({
+      element: container,
+      engine,
+      options: {
+        width,
+        height,
+        background: "transparent",
+        wireframes: false,
+        pixelRatio: window.devicePixelRatio || 1,
+      },
+    });
+
+    // Invisible bounds: ground + side walls so shapes pile inside the hero.
+    const WALL = 200;
+    let bounds = makeBounds(width, height);
+    Composite.add(engine.world, bounds);
+
+    function makeBounds(w: number, h: number) {
+      const opts = { isStatic: true, render: { visible: false } };
+      return [
+        // ground
+        Bodies.rectangle(w / 2, h + WALL / 2, w + WALL * 2, WALL, opts),
+        // left wall
+        Bodies.rectangle(-WALL / 2, h / 2, WALL, h * 3, opts),
+        // right wall
+        Bodies.rectangle(w + WALL / 2, h / 2, WALL, h * 3, opts),
+      ];
+    }
+
+    // Spawn a single random tapas shape just above the top edge.
+    function spawnShape() {
+      const x = Common.random(40, Math.max(60, width - 40));
+      const y = -60;
+      const color = COLORS[Math.floor(Common.random(0, COLORS.length))];
+      const size = Common.random(16, 44);
+      const common = {
+        restitution: 0.45, // a little bounce — "톡톡"
+        friction: 0.4,
+        frictionAir: 0.01,
+        render: { fillStyle: color, lineWidth: 0 },
+      };
+
+      const kind = Math.floor(Common.random(0, 4));
+      let body: Matter.Body;
+      switch (kind) {
+        case 0: // circle
+          body = Bodies.circle(x, y, size / 2, common);
+          break;
+        case 1: // rounded square (tile / bowl-ish)
+          body = Bodies.rectangle(x, y, size, size, {
+            ...common,
+            chamfer: { radius: size * 0.25 },
+          });
+          break;
+        case 2: // triangle
+          body = Bodies.polygon(x, y, 3, size / 2, common);
+          break;
+        default: // hexagon (little bowl)
+          body = Bodies.polygon(x, y, 6, size / 2, common);
+          break;
+      }
+
+      Matter.Body.setAngularVelocity(body, Common.random(-0.15, 0.15));
+      Composite.add(engine.world, body);
+    }
+
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+    Render.run(render);
+
+    // Drip shapes in until the pile is built, then stop.
+    const maxShapes = Math.min(70, Math.floor(width / 16));
+    let count = 0;
+    const spawnTimer = window.setInterval(() => {
+      spawnShape();
+      count += 1;
+      if (count >= maxShapes) window.clearInterval(spawnTimer);
+    }, 220);
+
+    // Keep bounds in sync with container size.
+    const resize = () => {
+      width = container.clientWidth;
+      height = container.clientHeight;
+      render.canvas.width = width * (window.devicePixelRatio || 1);
+      render.canvas.height = height * (window.devicePixelRatio || 1);
+      render.options.width = width;
+      render.options.height = height;
+      Render.setPixelRatio(render, window.devicePixelRatio || 1);
+      Composite.remove(engine.world, bounds);
+      bounds = makeBounds(width, height);
+      Composite.add(engine.world, bounds);
+    };
+    const ro = new ResizeObserver(resize);
+    ro.observe(container);
+
+    return () => {
+      window.clearInterval(spawnTimer);
+      ro.disconnect();
+      Render.stop(render);
+      Runner.stop(runner);
+      render.canvas.remove();
+      render.textures = {};
+      Composite.clear(engine.world, false);
+      Engine.clear(engine);
+    };
+  }, []);
+
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      {SHAPES.map((s, i) => (
-        // Outer: vertical fall (accelerating).
-        <span
-          key={i}
-          className="tapas-fall absolute top-0 block"
-          style={{
-            left: `${s.left}%`,
-            animationDuration: `${s.fall}s`,
-            animationDelay: `${s.delay}s`,
-          }}
-        >
-          {/* Inner: horizontal wobble + tilt (the "톡톡" bounce). */}
-          <span
-            className="tapas-sway block"
-            style={{
-              animationDuration: `${s.sway}s`,
-              animationDelay: `${s.delay}s`,
-            }}
-          >
-            <span className="block" style={shapeStyle(s)} />
-          </span>
-        </span>
-      ))}
-    </div>
+    <div
+      ref={containerRef}
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    />
   );
 }
