@@ -25,13 +25,16 @@ export default function Home() {
       <section className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden px-6 py-32 text-center">
         <FallingShapes />
         <div className="relative z-10 flex flex-col items-center">
+          <span className="mb-5 inline-block rounded-full border border-foreground/15 bg-background/70 px-4 py-1 text-xs font-medium uppercase tracking-widest text-foreground/60 backdrop-blur-sm">
+            Product Maker
+          </span>
           <h1
-            className="max-w-3xl text-6xl tracking-tight sm:text-8xl"
+            className="max-w-3xl text-6xl leading-none tracking-tight sm:text-8xl"
             style={{ fontFamily: "var(--font-bytesized)" }}
           >
             Tapas
           </h1>
-          <p className="mt-6 max-w-xl text-lg text-foreground/60">
+          <p className="mt-4 max-w-xl text-lg text-foreground/60">
             We make small, fun things — like tapas.
           </p>
         </div>
