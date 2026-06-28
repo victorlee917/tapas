@@ -25,7 +25,7 @@ export default function Home() {
       <section className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden px-6 py-32 text-center">
         <FallingShapes />
         <div className="relative z-10 flex flex-col items-center">
-          <span className="mb-3 inline-block rounded-full border border-foreground/15 bg-background/70 px-4 py-1 text-xs font-medium uppercase tracking-widest text-foreground/60 backdrop-blur-sm">
+          <span className="mb-3 inline-block rounded-full border border-foreground/15 bg-background/70 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-foreground/60 backdrop-blur-sm">
             Product Maker
           </span>
           <h1
