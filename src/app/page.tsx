@@ -25,7 +25,10 @@ export default function Home() {
       <section className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden px-6 py-32 text-center">
         <FallingShapes />
         <div className="relative z-10 flex flex-col items-center">
-          <h1 className="max-w-3xl text-5xl font-semibold tracking-tight sm:text-7xl">
+          <h1
+            className="max-w-3xl text-6xl tracking-tight sm:text-8xl"
+            style={{ fontFamily: "var(--font-bytesized)" }}
+          >
             Tapas
           </h1>
           <p className="mt-6 max-w-xl text-lg text-foreground/60">

@@ -3,20 +3,105 @@
 import { useEffect, useRef } from "react";
 import Matter from "matter-js";
 
-// Vibrant Spanish-tapas palette — saffron, paprika, tomato, olive,
-// Mediterranean turquoise, sangria.
-const COLORS = [
-  "#FF6700", // bright orange
-  "#F9A620", // saffron
-  "#F4D35E", // warm yellow
-  "#E63946", // tomato red
-  "#D81159", // sangria pink
-  "#06A77D", // emerald
-  "#2EC4B6", // turquoise
-  "#8AC926", // lime
-  "#F95738", // coral
-  "#3A86FF", // azulejo blue
+// Pixel-art color map (single chars used in the sprite grids below).
+const PX: Record<string, string | null> = {
+  ".": null,
+  r: "#E63946", // tomato red
+  o: "#FF6700", // orange
+  y: "#F4D35E", // yellow
+  g: "#8AC926", // lime
+  G: "#6A994E", // olive green
+  e: "#06A77D", // emerald
+  t: "#2EC4B6", // turquoise
+  p: "#D81159", // sangria pink
+  w: "#FBF3E0", // cream
+  b: "#3A86FF", // azulejo blue
+};
+
+// 8x8 byte-tapas sprites — olive, fried egg, gamba, pepper, heart, star.
+const SPRITES: string[][] = [
+  [
+    "..GGGG..",
+    ".GGGGGG.",
+    ".GGrrGG.",
+    ".GGrrGG.",
+    ".GGGGGG.",
+    ".GGGGGG.",
+    "..GGGG..",
+    "........",
+  ],
+  [
+    "........",
+    "..wwww..",
+    ".wwwwww.",
+    ".wwyyww.",
+    ".wwyyww.",
+    ".wwwwww.",
+    "..wwww..",
+    "........",
+  ],
+  [
+    "...oo...",
+    "..oooo..",
+    ".oo..oo.",
+    ".oo.....",
+    ".oo.....",
+    ".oooo...",
+    "...ooo..",
+    "....o...",
+  ],
+  [
+    "....gg..",
+    "...rg...",
+    "..rr....",
+    "..rr....",
+    ".rr.....",
+    ".rr.....",
+    ".rr.....",
+    "..r.....",
+  ],
+  [
+    ".pp..pp.",
+    "pppppppp",
+    "pppppppp",
+    "pppppppp",
+    ".pppppp.",
+    "..pppp..",
+    "...pp...",
+    "........",
+  ],
+  [
+    "...yy...",
+    "...yy...",
+    ".yyyyyy.",
+    "yyyyyyyy",
+    ".yyyyyy.",
+    ".yy..yy.",
+    ".y....y.",
+    "........",
+  ],
 ];
+
+const SPRITE_SIZE = 8;
+
+// Render an 8x8 sprite grid to a data URL (one canvas pixel per grid cell).
+function spriteToDataURL(rows: string[]): string {
+  const c = document.createElement("canvas");
+  c.width = SPRITE_SIZE;
+  c.height = SPRITE_SIZE;
+  const ctx = c.getContext("2d");
+  if (!ctx) return c.toDataURL();
+  rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const color = PX[row[x]];
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  });
+  return c.toDataURL();
+}
 
 export default function FallingShapes() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,18 +109,14 @@ export default function FallingShapes() {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    // Respect reduced-motion preferences.
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const {
-      Engine,
-      Render,
-      Runner,
-      Bodies,
-      Composite,
-      Common,
-    } = Matter;
+    const { Engine, Render, Runner, Bodies, Composite } = Matter;
+
+    // Build each texture once so matter caches 6 textures, not hundreds.
+    const SPRITE_URLS = SPRITES.map(spriteToDataURL);
+    // Chunky pixels: integer scale factors (3x/4x/5x of the 8px sprite).
+    const SCALES = [3, 4, 5];
 
     let width = container.clientWidth;
     let height = container.clientHeight;
@@ -55,7 +136,11 @@ export default function FallingShapes() {
       },
     });
 
-    // Invisible bounds: ground + side walls so shapes pile inside the hero.
+    // Keep pixel art crisp — never smooth the scaled-up sprites.
+    Matter.Events.on(render, "beforeRender", () => {
+      render.context.imageSmoothingEnabled = false;
+    });
+
     const WALL = 200;
     let bounds = makeBounds(width, height);
     Composite.add(engine.world, bounds);
@@ -63,104 +148,48 @@ export default function FallingShapes() {
     function makeBounds(w: number, h: number) {
       const opts = { isStatic: true, render: { visible: false } };
       return [
-        // ground
         Bodies.rectangle(w / 2, h + WALL / 2, w + WALL * 2, WALL, opts),
-        // left wall
         Bodies.rectangle(-WALL / 2, h / 2, WALL, h * 3, opts),
-        // right wall
         Bodies.rectangle(w + WALL / 2, h / 2, WALL, h * 3, opts),
       ];
     }
 
-    // Spawn a single random tapas shape just above the top edge.
     function spawnShape() {
-      const x = Common.random(40, Math.max(60, width - 40));
-      const y = -60;
-      const color = COLORS[Math.floor(Common.random(0, COLORS.length))];
-      const size = Common.random(16, 44);
-      const common = {
-        restitution: 0.45, // a little bounce — "톡톡"
-        friction: 0.4,
-        frictionAir: 0.01,
-        render: { fillStyle: color, lineWidth: 0 },
-      };
+      const scale = SCALES[Math.floor(Math.random() * SCALES.length)];
+      const size = SPRITE_SIZE * scale;
+      const x = Math.random() * Math.max(40, width - 40) + 20;
+      const idx = Math.floor(Math.random() * SPRITE_URLS.length);
 
-      const kind = Math.floor(Common.random(0, 4));
-      let body: Matter.Body;
-      switch (kind) {
-        case 0: // circle
-          body = Bodies.circle(x, y, size / 2, common);
-          break;
-        case 1: // rounded square (tile / bowl-ish)
-          body = Bodies.rectangle(x, y, size, size, {
-            ...common,
-            chamfer: { radius: size * 0.25 },
-          });
-          break;
-        case 2: // triangle
-          body = Bodies.polygon(x, y, 3, size / 2, common);
-          break;
-        default: // hexagon (little bowl)
-          body = Bodies.polygon(x, y, 6, size / 2, common);
-          break;
-      }
-
-      Matter.Body.setAngularVelocity(body, Common.random(-0.15, 0.15));
+      const body = Bodies.rectangle(x, -60, size, size, {
+        restitution: 0.1,
+        friction: 0.8,
+        frictionStatic: 1,
+        render: {
+          sprite: {
+            texture: SPRITE_URLS[idx],
+            xScale: scale,
+            yScale: scale,
+          },
+        },
+      });
+      // Lock rotation so tiles stack flat — clean 8-bit pile.
+      Matter.Body.setInertia(body, Infinity);
       Composite.add(engine.world, body);
     }
-
-    // A small tile of random monochrome noise, reused as a repeating pattern.
-    function makeGrain() {
-      const g = document.createElement("canvas");
-      g.width = 140;
-      g.height = 140;
-      const gctx = g.getContext("2d");
-      if (!gctx) return g;
-      const img = gctx.createImageData(g.width, g.height);
-      for (let i = 0; i < img.data.length; i += 4) {
-        // Bias bright so grain adds sparkle/texture without dulling color.
-        const v = 170 + Math.floor(Math.random() * 85);
-        img.data[i] = v;
-        img.data[i + 1] = v;
-        img.data[i + 2] = v;
-        // Sparse, low-alpha speckles so it reads as grain, not static.
-        img.data[i + 3] = Math.random() < 0.4 ? Math.floor(Math.random() * 90) : 0;
-      }
-      gctx.putImageData(img, 0, 0);
-      return g;
-    }
-    const grain = makeGrain();
-
-    // After each frame, dust grain over the shape pixels only.
-    Matter.Events.on(render, "afterRender", () => {
-      const ctx = render.context;
-      const pattern = ctx.createPattern(grain, "repeat");
-      if (!pattern) return;
-      ctx.save();
-      ctx.globalCompositeOperation = "source-atop"; // only over drawn shapes
-      ctx.globalAlpha = 0.28;
-      ctx.fillStyle = pattern;
-      ctx.fillRect(0, 0, render.options.width || 0, render.options.height || 0);
-      ctx.restore();
-    });
 
     const runner = Runner.create();
     Runner.run(runner, engine);
     Render.run(render);
 
-    // Drip shapes in until the pile is built, then stop.
-    // Scale with area so larger screens get a deeper pile.
-    const maxShapes = Math.min(220, Math.floor((width * height) / 7000));
+    const maxShapes = Math.min(200, Math.floor((width * height) / 8000));
     let count = 0;
     const spawnTimer = window.setInterval(() => {
-      // Drop a couple at a time so the pile builds up faster.
       spawnShape();
       spawnShape();
       count += 2;
       if (count >= maxShapes) window.clearInterval(spawnTimer);
-    }, 130);
+    }, 140);
 
-    // Keep bounds in sync with container size.
     const resize = () => {
       width = container.clientWidth;
       height = container.clientHeight;
