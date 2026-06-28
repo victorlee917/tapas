@@ -3,18 +3,19 @@
 import { useEffect, useRef } from "react";
 import Matter from "matter-js";
 
-// Warm, tapas-inspired palette.
+// Vibrant Spanish-tapas palette — saffron, paprika, tomato, olive,
+// Mediterranean turquoise, sangria.
 const COLORS = [
-  "#E07A5F",
-  "#F2CC8F",
-  "#81B29A",
-  "#E63946",
-  "#F4A261",
-  "#2A9D8F",
-  "#E76F51",
-  "#3D405B",
-  "#F6BD60",
-  "#84A59D",
+  "#FF6700", // bright orange
+  "#F9A620", // saffron
+  "#F4D35E", // warm yellow
+  "#E63946", // tomato red
+  "#D81159", // sangria pink
+  "#06A77D", // emerald
+  "#2EC4B6", // turquoise
+  "#8AC926", // lime
+  "#F95738", // coral
+  "#3A86FF", // azulejo blue
 ];
 
 export default function FallingShapes() {
@@ -117,12 +118,13 @@ export default function FallingShapes() {
       if (!gctx) return g;
       const img = gctx.createImageData(g.width, g.height);
       for (let i = 0; i < img.data.length; i += 4) {
-        const v = Math.floor(Math.random() * 255);
+        // Bias bright so grain adds sparkle/texture without dulling color.
+        const v = 170 + Math.floor(Math.random() * 85);
         img.data[i] = v;
         img.data[i + 1] = v;
         img.data[i + 2] = v;
         // Sparse, low-alpha speckles so it reads as grain, not static.
-        img.data[i + 3] = Math.random() < 0.55 ? Math.floor(Math.random() * 120) : 0;
+        img.data[i + 3] = Math.random() < 0.4 ? Math.floor(Math.random() * 90) : 0;
       }
       gctx.putImageData(img, 0, 0);
       return g;
@@ -136,7 +138,7 @@ export default function FallingShapes() {
       if (!pattern) return;
       ctx.save();
       ctx.globalCompositeOperation = "source-atop"; // only over drawn shapes
-      ctx.globalAlpha = 0.4;
+      ctx.globalAlpha = 0.28;
       ctx.fillStyle = pattern;
       ctx.fillRect(0, 0, render.options.width || 0, render.options.height || 0);
       ctx.restore();
